@@ -1,0 +1,13 @@
+[Interface]
+Address = 10.0.0.1/24
+SaveConfig = true
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE;
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE;
+ListenPort = {{ wireguard_port }}
+PrivateKey = {{ wireguard_server_private_key.stdout }}
+
+{% for index in range(1, amount_of_wireguard_clients + 1, 1) %}
+[Peer]
+PublicKey = {{ wireguard_client_public_key.results[index - 1].stdout }}
+AllowedIPs = 10.0.0.{{index + 1}}/32
+{% endfor %}

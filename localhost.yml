@@ -1,0 +1,11 @@
+---
+- hosts: localhost
+
+  vars_files:
+    - group_vars/vars.yml
+    - group_vars/vault.yml
+
+  roles:
+    - role: localhost
+      tags:
+        - localhost

@@ -1,0 +1,6 @@
+---
+- shell:
+    cmd: "qrencode -r /home/{{ localhost_username }}/wireguard/{{ item }}/client{{ index }}.conf -o /home/{{ localhost_username }}/wireguard/{{ item }}/client{{ index }}-qrcode.png"
+  loop: "{{ range(1, amount_of_wireguard_clients + 1, 1) | list }}"
+  loop_control:
+    loop_var: index

@@ -1,0 +1,3 @@
+---
+- import_tasks: essential.yml
+- import_tasks: network.yml

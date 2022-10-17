@@ -1,0 +1,28 @@
+---
+# ssh connection settings:
+ssh_password1: "{{ vault_ssh_password1 }}"
+ssh_password2: "{{ vault_ssh_password2 }}"
+# ansible user settings
+new_ansible_user_password: "{{ vault_new_ansible_user_password }}"
+# localhost settings
+localhost_username: marc
+localhost_password: "{{ vault_localhost_password }}"
+# Language and time settings
+locale: de_DE.UTF-8
+timezone: Europe/Berlin
+# new user settings
+create_new_user: yes
+username: paceman
+user_password: "{{ vault_user_password }}"
+user_shell: /bin/bash
+# network settings
+disable_ipv6: yes
+# ssh settings
+ssh_key_type_: ed25519
+ssh_port: 56897
+ssh_key_passphrase_: "{{ vault_ssh_key_passphrase_ }}"
+# wireguard settings
+wireguard_port: 51820
+wireguard_dns: 1.1.1.1
+# must be smaller or equal to 255
+amount_of_wireguard_clients: 1

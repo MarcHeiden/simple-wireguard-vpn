@@ -1,0 +1,6 @@
+---
+- name: Start servers playbook
+  import_playbook: servers.yml
+
+- name: Start localhost playbook
+  import_playbook: localhost.yml

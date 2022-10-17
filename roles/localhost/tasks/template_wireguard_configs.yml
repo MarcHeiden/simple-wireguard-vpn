@@ -1,0 +1,10 @@
+---
+- template:
+    src: wireguard_client.conf.j2
+    dest: "/home/{{ localhost_username }}/wireguard/{{ item }}/client{{ index }}.conf"
+    owner: "{{ localhost_username }}"
+    group: "{{ localhost_username }}"
+    mode: 0600
+  loop: "{{ range(1, amount_of_wireguard_clients + 1, 1) | list }}"
+  loop_control:
+    loop_var: index

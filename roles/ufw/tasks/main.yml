@@ -1,0 +1,58 @@
+---
+- name: Gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Purge iptables-persistent if installed
+  apt:
+    name: iptables-persistent
+    state: absent
+    purge: yes
+  when: "'iptables-persistent' in ansible_facts.packages"
+
+- name: Install ufw
+  apt:
+    name: ufw
+
+- name: Reset all firewall rules
+  community.general.ufw:
+    state: reset
+
+- name: Set firewall rules
+  block:
+    - name: Default allow outgoing traffic
+      community.general.ufw:
+        default: allow
+        direction: outgoing
+
+    - name: Allow wireguard
+      community.general.ufw:
+        rule: allow
+        proto: udp
+        to_port: "{{ wireguard_port }}"
+        to_ip: "0.0.0.0/0"
+
+    - name: Allow ssh
+      community.general.ufw:
+        rule: allow
+        proto: tcp
+        to_port: "{{ ssh_port }}"
+        to_ip: "0.0.0.0/0"
+      when: disable_ipv6 | default(False)
+
+    - name: Allow ssh
+      community.general.ufw:
+        rule: allow
+        proto: tcp
+        to_port: "{{ ssh_port }}"
+      when: not disable_ipv6 | default(True)
+
+    - name: Default deny incoming traffic
+      community.general.ufw:
+        default: deny
+        direction: incoming
+
+- name: Enable logging
+  community.general.ufw:
+    logging: "low"
+  notify: Enable firewall

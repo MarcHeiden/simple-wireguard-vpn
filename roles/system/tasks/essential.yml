@@ -1,0 +1,72 @@
+---
+- name: Update and upgrade apt packages
+  apt:
+    upgrade: yes
+    autoremove: yes
+    update_cache: yes
+
+- name: Change current user password
+  user:
+    name: "{{ ansible_user }}"
+    state: present
+    update_password: always
+    password: "{{ new_ansible_user_password | string | password_hash('sha512') }}"
+
+- name: Set Language and time settings
+  block:
+    - name: Generate the locale
+      locale_gen:
+        name: "{{ locale }}"
+        state: present
+
+    - name: Create timesyncd.conf.d directory if it does not exist
+      file:
+        path: /etc/systemd/timesyncd.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Copy timesyncd.conf
+      copy:
+        src: timesyncd.conf
+        dest: /etc/systemd/timesyncd.conf.d/timesyncd.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Set Timezone
+      community.general.timezone:
+        name: "{{ timezone }}"
+
+- name: Ensure group sudo exists
+  group:
+    name: sudo
+    state: present
+
+- name: Create new user
+  user:
+    name: "{{ username }}"
+    password: "{{ user_password | string | password_hash('sha512') }}"
+    groups:
+      - sudo
+      - users
+    state: present
+    append: true
+    shell: "{{ user_shell }}"
+  when: create_new_user | default(False)
+
+- name: "Ensure group {{ username }} exists"
+  group:
+    name: "{{ username }}"
+    state: present
+  when: create_new_user | default(False)
+
+- name: Set Permissions for the user home directory
+  file:
+    path: "/home/{{ username }}"
+    state: directory
+    mode: 0755
+    owner: "{{ username }}"
+    group: "{{ username }}"
+  when: create_new_user | default(False)

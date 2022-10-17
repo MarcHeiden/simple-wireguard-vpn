@@ -1,0 +1,90 @@
+---
+- name: Set Permissions for /etc/ssh/sshd_config
+  file:
+    path: /etc/ssh/sshd_config
+    state: touch
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Change username
+  block:
+    - set_fact:
+        old_username: "{{ username }}"
+    - set_fact:
+        username: "{{ ansible_user }}"
+  when: create_new_user == False | default(True)
+
+- name: "Create the SSH directory for {{ username }}"
+  file:
+    path: "/home/{{ username }}/.ssh"
+    state: directory
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    mode: 0700
+
+- name: Generate and authorize a new public key pair
+  block:
+    - name: Generate an SSH key pair
+      user:
+        name: "{{ username }}"
+        generate_ssh_key: yes
+        ssh_key_type: "{{ ssh_key_type_ }}"
+        ssh_key_file: ".ssh/{{ inventory_hostname }}"
+        ssh_key_passphrase: "{{ ssh_key_passphrase_ }}"
+      register: ssh_key
+
+    - name: Authorize the public key on the server
+      ansible.posix.authorized_key:
+        user: "{{ username }}"
+        key: "{{ ssh_key.ssh_public_key }}"
+
+    - name: Fetch key pair from server
+      block:
+        - name: Fetch private key
+          fetch:
+            src: "/home/{{ username }}/.ssh/{{ inventory_hostname }}"
+            dest: "/home/{{ localhost_username }}/.ssh/{{ inventory_hostname }}"
+            flat: yes
+
+        - name: Fetch public key
+          fetch:
+            src: "/home/{{ username }}/.ssh/{{ inventory_hostname }}.pub"
+            dest: "/home/{{ localhost_username }}/.ssh/{{ inventory_hostname }}.pub"
+            flat: yes
+
+    - name: Remove key pair from the server
+      block:
+        - name: Remove private key
+          file:
+            path: "/home/{{ username }}/.ssh/{{ inventory_hostname }}"
+            state: absent
+
+        - name: Remove public key
+          file:
+            path: "/home/{{ username }}/.ssh/{{ inventory_hostname }}.pub"
+            state: absent
+
+- name: Rechange username
+  set_fact:
+    username: "{{ old_username }}"
+  when: create_new_user == False | default(True)
+
+- name: Set sshd config settings
+  block:
+    - name: Create sshd_config.d directory if it does not exist
+      file:
+        path: /etc/ssh/sshd_config.d
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Set sshd_config.conf
+      template:
+        src: sshd_config.conf.j2
+        dest: /etc/ssh/sshd_config.d/sshd_config.conf
+        owner: root
+        group: root
+        mode: 0600
+      notify: Restart sshd service

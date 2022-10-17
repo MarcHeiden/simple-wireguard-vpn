@@ -1,0 +1,6 @@
+Host {{ item }}
+  HostName {{ hostvars[item]['ansible_host'] }}
+  User {{ username }}
+  IdentityFile ~/.ssh/{{ item }}
+  IdentitiesOnly yes
+  Port {{ ssh_port }}

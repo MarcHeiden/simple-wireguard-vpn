@@ -1,0 +1,23 @@
+---
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_become_password: "{{ localhost_password }}"
+
+  children:
+    servers:
+      hosts:
+        example1:
+          ansible_host: 192.168.1.1
+          ansible_port: 22
+          ansible_user: ubuntu
+          ansible_connection: ssh
+          ansible_password: "{{ ssh_password1 }}"
+
+        example2:
+          ansible_host: 192.168.1.2
+          ansible_port: 22
+          ansible_user: ubuntu
+          ansible_connection: ssh
+          ansible_password: "{{ ssh_password2 }}"

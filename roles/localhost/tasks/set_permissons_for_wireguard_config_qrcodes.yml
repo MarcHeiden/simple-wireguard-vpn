@@ -1,0 +1,9 @@
+---
+- file:
+    path: "/home/{{ localhost_username }}/wireguard/{{ item }}/client{{ index }}-qrcode.png"
+    owner: "{{ localhost_username }}"
+    group: "{{ localhost_username }}"
+    mode: 0600
+  loop: "{{ range(1, amount_of_wireguard_clients + 1, 1) | list }}"
+  loop_control:
+    loop_var: index

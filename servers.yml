@@ -1,0 +1,31 @@
+---
+- hosts: servers
+
+  vars_files:
+    - group_vars/vars.yml
+    - group_vars/vault.yml
+
+  roles:
+    - role: system
+      tags:
+        - system
+
+    - role: ssh
+      tags:
+        - ssh
+
+    - role: wireguard
+      tags:
+        - wireguard
+
+    - role: ufw
+      tags:
+        - ufw
+
+  tasks:
+    - name: Set hostnames
+      set_fact:
+        hostnames: "{{ ansible_play_hosts_all }}"
+      delegate_facts: true
+      delegate_to: localhost
+      run_once: true

@@ -1,0 +1,60 @@
+---
+- name: Set Permissions for client ssh key pair
+  block:
+    - name: Set Permissions for private key
+      file:
+        path: "/home/{{ localhost_username }}/.ssh/{{ item }}"
+        owner: "{{ localhost_username }}"
+        group: "{{ localhost_username }}"
+        mode: 0400
+      loop: "{{ hostnames }}"
+
+    - name: Set Permissions for public key
+      file:
+        path: "/home/{{ localhost_username }}/.ssh/{{ item }}.pub"
+        owner: "{{ localhost_username }}"
+        group: "{{ localhost_username }}"
+        mode: 0644
+      loop: "{{ hostnames }}"
+
+- name: Set client ssh config
+  blockinfile:
+    dest: "/home/{{ localhost_username }}/.ssh/config"
+    block: "{{ lookup('template', '../templates/ssh_client_config.j2') }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK FOR {{ item }}"
+    create: true
+    owner: "{{ localhost_username }}"
+    group: "{{ localhost_username }}"
+    mode: 0600
+  loop: "{{ hostnames }}"
+
+- name: Configure wireguard client configs
+  block:
+    - name: Create wireguard directories
+      file:
+        path: "/home/{{ localhost_username }}/wireguard/{{ item }}"
+        state: directory
+        owner: "{{ localhost_username }}"
+        group: "{{ localhost_username }}"
+        mode: 0700
+        recurse: yes
+      loop: "{{ hostnames }}"
+
+    # Task is in other file in order to use nested loop.
+    # See https://docs.ansible.com/ansible/latest/user_guide/playbooks_loops.html#defining-inner-and-outer-variable-names-with-loop-var
+    - name: Template configs
+      include_tasks: template_wireguard_configs.yml
+      loop: "{{ hostnames }}"
+
+- name: Install qrencode
+  apt:
+    name: qrencode
+
+- name: Generate client config qrcodes
+  block:
+    - include_tasks: generate_wireguard_config_qrcodes.yml
+      loop: "{{ hostnames }}"
+
+    - name: Set Permissions for generated qrcodes
+      include_tasks: set_permissons_for_wireguard_config_qrcodes.yml
+      loop: "{{ hostnames }}"

@@ -1,0 +1,96 @@
+---
+- name: Copy enable-ipv4-forwarding.conf
+  copy:
+    src: enable-ipv4-forwarding.conf
+    dest: /etc/sysctl.d/enable-ipv4-forwarding.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: Reload procps service
+
+- name: Install wireguard
+  apt:
+    name: wireguard
+    autoremove: yes
+
+- name: Generate server key pair
+  block:
+    - name: Generate private key
+      shell:
+        cmd: wg genkey | tee /etc/wireguard/private.key
+      register: wireguard_server_private_key
+
+    - name: Set Permissions for private key
+      file:
+        path: "/etc/wireguard/private.key"
+        owner: root
+        group: root
+        mode: 0400
+
+    - name: Generate public key
+      shell:
+        cmd: cat /etc/wireguard/private.key | wg pubkey | tee /etc/wireguard/public.key
+      register: wireguard_server_public_key
+
+    - name: Set Permissions for public key
+      file:
+        path: "/etc/wireguard/public.key"
+        owner: root
+        group: root
+        mode: 0644
+
+- name: Change username
+  block:
+    - set_fact:
+        old_username: "{{ username }}"
+    - set_fact:
+        username: "{{ ansible_user }}"
+  when: create_new_user == False | default(True)
+
+- name: Generate client key pairs
+  block:
+    - name: "Create client wireguard key directory for {{ username }}"
+      file:
+        path: "/home/{{ username }}/wireguard-keys"
+        state: directory
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: 0700
+
+    - name: "Generate private key for clients {{ item }}"
+      shell:
+        cmd: "wg genkey | tee /home/{{ username }}/wireguard-keys/{{ inventory_hostname }}-client{{ item }}"
+      register: wireguard_client_private_key
+      loop: "{{ range(1, amount_of_wireguard_clients + 1, 1) | list }}"
+
+    - name: "Generate public key for client{{ item }}"
+      shell:
+        cmd: "cat /home/{{ username }}/wireguard-keys/{{ inventory_hostname }}-client{{ item }} | wg pubkey | tee /home/{{ username }}/wireguard-keys/{{ inventory_hostname }}-client{{ item }}.pub"
+      register: wireguard_client_public_key
+      loop: "{{ range(1, amount_of_wireguard_clients + 1, 1) | list }}"
+
+- name: Set wireguard config setting
+  template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/wg0.conf
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Remove client key pair from the server
+  file:
+    path: "/home/{{ username }}/wireguard-keys"
+    state: absent
+
+- name: Rechange username
+  set_fact:
+    username: "{{ old_username }}"
+  when: create_new_user == False | default(True)
+
+- name: Activate Wireguard interface
+  shell:
+    cmd: wg-quick up wg0
+
+- name: Activate Wireguard interface on startup
+  shell:
+    cmd: systemctl enable wg-quick@wg0
